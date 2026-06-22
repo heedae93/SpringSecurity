@@ -28,6 +28,8 @@ jwt:
   secret:
     key: c3ByaW5nLWJvb3Qtc2VjdXJpdHktand0LXNlY3JldC10dWxpcC13ZWItdHVsaXAtMDAwMDAwMDAwMDAwMDAwMA==
 
-mybatis:
-  mapper-locations: classpath:mapper/*.xml
-  type-aliases-package: com.example.authtest.dto
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: none      # schema.sql이 테이블 생성하므로 JPA는 건드리지 않음
+    show-sql: true        # 실행되는 SQL 로그로 출력
