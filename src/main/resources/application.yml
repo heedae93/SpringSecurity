@@ -7,18 +7,24 @@ spring:
 
   # H2 인메모리 DB (연습용)
   datasource:
-    url: jdbc:h2:mem:authtestdb;MODE=MySQL
+    url: jdbc:h2:mem:authtestdb;MODE=MySQL;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
     username: sa
     password:
 
   h2:
     console:
-      enabled: true   # http://localhost:8080/h2-console 로 DB 확인 가능
+      enabled: true   # http://localhost:9090/h2-console 로 DB 확인 가능
 
   sql:
     init:
       mode: always    # 서버 시작 시 schema.sql / data.sql 자동 실행
+
+  jpa:
+    defer-datasource-initialization: true   # JPA 초기화 완료 후 schema.sql/data.sql 실행
+    hibernate:
+      ddl-auto: none      # schema.sql이 테이블 생성하므로 JPA는 건드리지 않음
+    show-sql: true        # 실행되는 SQL 로그로 출력
 
   security:
     filter:
@@ -27,9 +33,3 @@ spring:
 jwt:
   secret:
     key: c3ByaW5nLWJvb3Qtc2VjdXJpdHktand0LXNlY3JldC10dWxpcC13ZWItdHVsaXAtMDAwMDAwMDAwMDAwMDAwMA==
-
-spring:
-  jpa:
-    hibernate:
-      ddl-auto: none      # schema.sql이 테이블 생성하므로 JPA는 건드리지 않음
-    show-sql: true        # 실행되는 SQL 로그로 출력

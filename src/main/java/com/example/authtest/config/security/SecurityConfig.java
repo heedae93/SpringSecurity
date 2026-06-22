@@ -95,6 +95,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // /auth/login 은 토큰 없이 누구나 접근 가능 (로그인 API)
                 .requestMatchers("/auth/login").permitAll()
+                // 로그인 테스트 페이지
+                .requestMatchers("/").permitAll()
                 // h2-console 은 개발용으로 허용
                 .requestMatchers("/h2-console/**").permitAll()
                 // 그 외 모든 요청은 인증(JWT) 필요

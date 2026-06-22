@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>로그인 흐름 시각화</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1a1d23;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            padding: 16px 32px;
+            background: #22262e;
+            border-bottom: 1px solid #333;
+            font-size: 15px;
+            font-weight: 600;
+            color: #a0b4ff;
+        }
+        .main {
+            display: flex;
+            flex: 1;
+            gap: 0;
+        }
+
+        /* ── 왼쪽: 로그인 폼 ── */
+        .form-panel {
+            width: 300px;
+            min-width: 300px;
+            background: #22262e;
+            border-right: 1px solid #333;
+            padding: 28px 24px;
+        }
+        .form-panel h3 { color: #a0b4ff; margin-bottom: 20px; font-size: 14px; }
+        label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; }
+        input, select {
+            width: 100%;
+            padding: 9px 12px;
+            background: #1a1d23;
+            border: 1px solid #3a3f4b;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 13px;
+            margin-bottom: 14px;
+            outline: none;
+        }
+        input:focus, select:focus { border-color: #4f8ef7; }
+        select option { background: #1a1d23; }
+        .login-btn {
+            width: 100%;
+            padding: 10px;
+            background: #4f8ef7;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .login-btn:hover { background: #3a7de8; }
+        .login-btn:disabled { background: #444; cursor: default; }
+
+        /* ── 가운데: 흐름도 ── */
+        .flow-panel {
+            flex: 1;
+            padding: 24px 28px;
+            overflow-y: auto;
+        }
+        .flow-panel h3 { color: #a0b4ff; margin-bottom: 20px; font-size: 14px; }
+
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 14px 0;
+            border-left: 2px solid #333;
+            padding-left: 20px;
+            margin-left: 10px;
+            position: relative;
+            transition: border-color 0.3s;
+        }
+        .step::before {
+            content: '';
+            position: absolute;
+            left: -7px;
+            top: 18px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #333;
+            border: 2px solid #444;
+            transition: all 0.3s;
+        }
+        .step.active::before { background: #4f8ef7; border-color: #4f8ef7; box-shadow: 0 0 8px #4f8ef7; }
+        .step.done::before  { background: #4caf50; border-color: #4caf50; }
+        .step.error::before { background: #ef5350; border-color: #ef5350; }
+        .step.active { border-color: #4f8ef7; }
+        .step.done   { border-color: #4caf50; }
+        .step.error  { border-color: #ef5350; }
+
+        .step-body { flex: 1; }
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+        .step-num {
+            font-size: 10px;
+            color: #666;
+            font-weight: 700;
+            min-width: 20px;
+        }
+        .step-class {
+            font-size: 13px;
+            font-weight: 700;
+            color: #a0b4ff;
+            font-family: monospace;
+        }
+        .step-desc {
+            font-size: 12px;
+            color: #666;
+        }
+        .step-data {
+            margin-top: 8px;
+            background: #1a1d23;
+            border: 1px solid #2e3340;
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-family: monospace;
+            font-size: 11px;
+            color: #80cbc4;
+            display: none;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .step.active .step-data,
+        .step.done .step-data,
+        .step.error .step-data { display: block; }
+
+        .arrow {
+            text-align: center;
+            color: #4caf50;
+            font-size: 13px;
+            margin: 2px 0 2px 10px;
+            padding-left: 20px;
+            border-left: 2px solid #333;
+        }
+
+        /* ── 오른쪽: 요청/응답 Raw ── */
+        .raw-panel {
+            width: 280px;
+            min-width: 280px;
+            background: #22262e;
+            border-left: 1px solid #333;
+            padding: 24px 20px;
+        }
+        .raw-panel h3 { color: #a0b4ff; margin-bottom: 16px; font-size: 14px; }
+        .raw-box {
+            background: #1a1d23;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 11px;
+            margin-bottom: 16px;
+            min-height: 80px;
+            color: #ccc;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .raw-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #666;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 700;
+            margin-left: 6px;
+        }
+        .badge-post { background: #1565c0; color: #90caf9; }
+        .badge-ok   { background: #1b5e20; color: #a5d6a7; }
+        .badge-err  { background: #b71c1c; color: #ef9a9a; }
+        .status-idle  { color: #666; }
+        .status-run   { color: #4f8ef7; }
+        .status-ok    { color: #4caf50; }
+        .status-err   { color: #ef5350; }
+
+        .spinner {
+            display: inline-block;
+            width: 10px; height: 10px;
+            border: 2px solid #444;
+            border-top-color: #4f8ef7;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .copy-btn {
+            width: auto;
+            padding: 4px 10px;
+            font-size: 10px;
+            background: #3a3f4b;
+            color: #ccc;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            float: right;
+        }
+        .copy-btn:hover { background: #555; }
+    </style>
+</head>
+<body>
+
+<header>🔐 Spring Security + JWT 로그인 흐름 시각화</header>
+
+<div class="main">
+
+    <!-- 왼쪽: 폼 -->
+    <div class="form-panel">
+        <h3>① 로그인 요청</h3>
+        <label>아이디</label>
+        <input type="text" id="userId" value="user01">
+
+        <label>비밀번호</label>
+        <input type="password" id="passwd" value="1234">
+
+        <label>사용자 유형</label>
+        <select id="userType">
+            <option value="U">일반 사용자 (U)</option>
+            <option value="A">관리자 (A)</option>
+        </select>
+
+        <button class="login-btn" id="loginBtn" onclick="doLogin()">로그인</button>
+
+        <div style="margin-top: 20px; font-size: 11px; color: #555; line-height: 1.7">
+            <div>테스트 계정</div>
+            <div style="color:#666">user01 / 1234 → ROLE_USER</div>
+            <div style="color:#666">admin01 / 1234 → ROLE_ADMIN</div>
+        </div>
+    </div>
+
+    <!-- 가운데: 흐름도 -->
+    <div class="flow-panel">
+        <h3>② 처리 흐름 <span id="flowStatus" class="status-idle">— 대기 중</span></h3>
+
+        <div class="flow-steps">
+
+            <div class="step" id="step1">
+                <div class="step-body">
+                    <div class="step-header">
+                        <span class="step-num">1</span>
+                        <span class="step-class">AuthController</span>
+                        <span class="step-desc">POST /auth/login 수신</span>
+                    </div>
+                    <div class="step-data" id="data1">— 대기 중</div>
+                </div>
+            </div>
+
+            <div class="arrow">↓ authService.login(loginDto)</div>
+
+            <div class="step" id="step2">
+                <div class="step-body">
+                    <div class="step-header">
+                        <span class="step-num">2</span>
+                        <span class="step-class">AuthServiceImpl</span>
+                        <span class="step-desc">UsernamePasswordAuthenticationToken 생성 후 인증 위임</span>
+                    </div>
+                    <div class="step-data" id="data2">— 대기 중</div>
+                </div>
+            </div>
+
+            <div class="arrow">↓ authenticationManager.authenticate(token)</div>
+
+            <div class="step" id="step3">
+                <div class="step-body">
+                    <div class="step-header">
+                        <span class="step-num">3</span>
+                        <span class="step-class">CustomAuthenticationProvider</span>
+                        <span class="step-desc">DB 조회 + 비밀번호 검증</span>
+                    </div>
+                    <div class="step-data" id="data3">— 대기 중</div>
+                </div>
+            </div>
+
+            <div class="arrow">↓ passwordEncoder.matches() 결과</div>
+
+            <div class="step" id="step4">
+                <div class="step-body">
+                    <div class="step-header">
+                        <span class="step-num">4</span>
+                        <span class="step-class">JwtTokenProvider</span>
+                        <span class="step-desc">Authentication → JWT 생성</span>
+                    </div>
+                    <div class="step-data" id="data4">— 대기 중</div>
+                </div>
+            </div>
+
+            <div class="arrow">↓ TokenDto 반환</div>
+
+            <div class="step" id="step5">
+                <div class="step-body">
+                    <div class="step-header">
+                        <span class="step-num">5</span>
+                        <span class="step-class">AuthController</span>
+                        <span class="step-desc">ResponseEntity 200 OK 응답</span>
+                    </div>
+                    <div class="step-data" id="data5">— 대기 중</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 오른쪽: Raw -->
+    <div class="raw-panel">
+        <h3>③ 요청 / 응답</h3>
+
+        <div class="raw-label">
+            요청 <span class="badge badge-post">POST</span>
+        </div>
+        <div class="raw-box" id="rawRequest">—</div>
+
+        <div class="raw-label" id="rawResLabel">
+            응답 <span class="badge" id="statusBadge">—</span>
+        </div>
+        <div class="raw-box" id="rawResponse">—</div>
+
+        <button class="copy-btn" id="copyBtn" onclick="copyToken()" style="display:none">토큰 복사</button>
+    </div>
+
+</div>
+
+<script>
+    const DELAY = 400;
+
+    function setStep(id, state, text) {
+        const el = document.getElementById('step' + id);
+        const data = document.getElementById('data' + id);
+        el.className = 'step ' + state;
+        data.textContent = text;
+    }
+
+    function resetSteps() {
+        for (let i = 1; i <= 5; i++) {
+            document.getElementById('step' + i).className = 'step';
+            document.getElementById('data' + i).textContent = '— 대기 중';
+        }
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    async function doLogin() {
+        const id       = document.getElementById('userId').value.trim();
+        const passwd   = document.getElementById('passwd').value;
+        const userType = document.getElementById('userType').value;
+        const btn      = document.getElementById('loginBtn');
+
+        btn.disabled = true;
+        btn.textContent = '처리 중...';
+        resetSteps();
+
+        document.getElementById('flowStatus').className = 'status-run';
+        document.getElementById('flowStatus').innerHTML = '<span class="spinner"></span>처리 중...';
+        document.getElementById('rawResponse').textContent = '—';
+        document.getElementById('statusBadge').className = 'badge';
+        document.getElementById('statusBadge').textContent = '—';
+        document.getElementById('copyBtn').style.display = 'none';
+
+        const body = { id, passwd, user_type: userType };
+
+        // 요청 표시
+        document.getElementById('rawRequest').textContent =
+            'POST /auth/login\nContent-Type: application/json\n\n' +
+            JSON.stringify(body, null, 2);
+
+        // STEP 1
+        await sleep(DELAY * 0.5);
+        setStep(1, 'active', `@RequestBody 로 LoginDto 수신\n{\n  id: "${id}",\n  passwd: "****",\n  user_type: "${userType}"\n}`);
+
+        // STEP 2
+        await sleep(DELAY);
+        setStep(1, 'done',   `LoginDto 수신 완료\nAuthService.login(loginDto) 호출`);
+        setStep(2, 'active', `new UsernamePasswordAuthenticationToken(\n  principal = "${id}",\n  credentials = "****"\n)\n↓ authenticationManager.authenticate(token) 호출`);
+
+        // STEP 3
+        await sleep(DELAY);
+        setStep(2, 'done', `인증 토큰 생성 완료\nAuthenticationManager에 위임`);
+        setStep(3, 'active', `CustomUserDetailsService.loadUserByUsername("${id}")\n→ DB 조회 중...\n\nPasswordEncoder.matches(입력값, DB해시값)\n→ 검증 중...`);
+
+        // 실제 API 호출
+        let response, data;
+        try {
+            response = await fetch('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            data = await response.json();
+        } catch (e) {
+            setStep(3, 'error', `서버 연결 실패: ${e.message}`);
+            document.getElementById('flowStatus').className = 'status-err';
+            document.getElementById('flowStatus').textContent = '연결 실패';
+            btn.disabled = false;
+            btn.textContent = '로그인';
+            return;
+        }
+
+        if (response.ok) {
+            // 성공 흐름
+            setStep(3, 'done',
+                `DB 조회 성공: user_id="${data.user_id}", user_type="${data.user_type}"\n` +
+                `BCrypt.matches() → true ✅\n` +
+                `→ UsernamePasswordAuthenticationToken(인증완료) 반환`
+            );
+
+            await sleep(DELAY);
+            setStep(4, 'active',
+                `Authentication 객체에서 사용자 정보 추출\n` +
+                `→ Jwts.builder()\n   .claim("user_id", "${data.user_id}")\n   .claim("user_type", "${data.user_type}")\n   .signWith(HS512)\n   .compact()`
+            );
+
+            await sleep(DELAY);
+            const exp = new Date(data.accessTokenExpiresIn).toLocaleString('ko-KR');
+            setStep(4, 'done',
+                `JWT 생성 완료\ngrantType: "${data.grantType}"\nuser_id: "${data.user_id}"\nuser_type: "${data.user_type}"\n만료: ${exp}\n\nTokenDto 빌드 완료`
+            );
+
+            await sleep(DELAY * 0.5);
+            setStep(5, 'done',
+                `ResponseEntity.ok(tokenDto)\n→ HTTP 200 OK\n→ JSON 직렬화 후 클라이언트 전송 완료`
+            );
+
+            document.getElementById('flowStatus').className = 'status-ok';
+            document.getElementById('flowStatus').textContent = '✅ 인증 성공';
+
+            // 응답 Raw
+            document.getElementById('rawResponse').textContent =
+                'HTTP 200 OK\n\n' + JSON.stringify(data, null, 2);
+            const badge = document.getElementById('statusBadge');
+            badge.className = 'badge badge-ok';
+            badge.textContent = '200 OK';
+            document.getElementById('copyBtn').style.display = 'inline-block';
+
+        } else {
+            // 실패 흐름
+            setStep(3, 'error',
+                `인증 실패!\n` +
+                `→ BadCredentialsException 발생\n` +
+                `→ Controller catch 블록으로 전파`
+            );
+
+            await sleep(DELAY * 0.5);
+            setStep(5, 'error',
+                `catch(Exception e) 처리\n→ ResponseEntity.status(401)\n→ JSON 에러 메시지 반환`
+            );
+
+            document.getElementById('flowStatus').className = 'status-err';
+            document.getElementById('flowStatus').textContent = '❌ 인증 실패';
+
+            document.getElementById('rawResponse').textContent =
+                'HTTP 401 Unauthorized\n\n' + JSON.stringify(data, null, 2);
+            const badge = document.getElementById('statusBadge');
+            badge.className = 'badge badge-err';
+            badge.textContent = '401 Fail';
+        }
+
+        btn.disabled = false;
+        btn.textContent = '로그인';
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Enter') doLogin();
+    });
+
+    function copyToken() {
+        try {
+            const raw = document.getElementById('rawResponse').textContent;
+            const token = JSON.parse(raw.split('\n\n')[1]).accessToken;
+            navigator.clipboard.writeText(token).then(() => {
+                document.getElementById('copyBtn').textContent = '복사됨!';
+                setTimeout(() => document.getElementById('copyBtn').textContent = '토큰 복사', 1500);
+            });
+        } catch(e) {}
+    }
+</script>
+</body>
+</html>
